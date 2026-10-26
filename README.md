@@ -5,6 +5,7 @@
 北向使用版本化 Protobuf，Web 和 CLI 共享同一接口，关闭浏览器不会取消已受理任务。项目采用单写入存储；多节点提交可以部分成功，当前没有跨节点原子事务或自动多实例接管。扩展数据面由 Agent 实现统一操作和能力，Controller 按能力生成计划，开发入口见[扩展流程](docs/developer/extensions.rst)。
 
 从这里部署软件：[源码编译、安装与启动](docs/user/source-install.rst) · [源码镜像与 Docker 部署](docs/user/docker-deploy.rst) · [版本发布、交付与升级](docs/user/release.rst)。
+维护者制作带文档的 `.tar.xz` 包、推送 Git tag、发布 GitHub Release 和补传附件，见[开发发布流程](docs/developer/release.rst)。
 
 默认 Controller 镜像现已集成 etcd；各 Agent 镜像各自集成 Redis / FRR。`controller.conf` 是严格 JSON，可通过 `-config` 加载，也可从容器外只读挂载覆盖 `/etc/sdn-controller/controller.conf`，其中同时配置 Controller 和内置 etcd。详见 [配置文件与挂载教程](docs/user/configuration-file.rst)。CLI 参数覆盖文件，现有 token 环境变量覆盖文件中的 token；不传 `-config` 的原生启动方式保持兼容。
 

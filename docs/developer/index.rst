@@ -14,10 +14,12 @@
    extensions
    storage
    testing
+   release
    build-docs
 
 建议按 :doc:`architecture` → :doc:`protocol` → :doc:`planner` / :doc:`resources`
 → :doc:`storage` 阅读实现，再按 :doc:`extensions` 完成新能力，按 :doc:`testing` 核对证据。
-部署交付及兼容性检查见 :doc:`/user/release`。
+制作带文档的离线包、发布 tag 和 GitHub 附件见 :doc:`release`；
+部署交付及升级兼容性检查见 :doc:`/user/release`。
 日常部署和 CLI 操作见 :doc:`../user/index`。
 
