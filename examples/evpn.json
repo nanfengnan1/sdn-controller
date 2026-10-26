@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {"nodeId":"spine","name":"spine","role":"spine","fabricId":"lab","routerId":"10.255.0.1","asn":65000,"configureSystem":true,"ospf":true,
+     "interfaces":[{"name":"lo","addresses":["10.255.0.1/32"],"ospf":true,"passive":true},{"name":"swp1","mtu":9000,"addresses":["10.0.1.1/30"],"ospf":true},{"name":"swp2","mtu":9000,"addresses":["10.0.2.1/30"],"ospf":true}],
+     "peers":[{"address":"10.255.0.11","remoteAs":65000,"updateSource":"lo","rrClient":true},{"address":"10.255.0.12","remoteAs":65000,"updateSource":"lo","rrClient":true}]},
+    {"nodeId":"leaf1","name":"leaf1","role":"leaf","fabricId":"lab","routerId":"10.255.0.11","vtepIp":"10.255.0.11","asn":65000,"configureSystem":true,"ospf":true,
+     "interfaces":[{"name":"lo","addresses":["10.255.0.11/32"],"ospf":true,"passive":true},{"name":"uplink","mtu":9000,"addresses":["10.0.1.2/30"],"ospf":true},{"name":"host10","mtu":1500}],
+     "peers":[{"address":"10.255.0.1","remoteAs":65000,"updateSource":"lo"}]},
+    {"nodeId":"leaf2","name":"leaf2","role":"leaf","fabricId":"lab","routerId":"10.255.0.12","vtepIp":"10.255.0.12","asn":65000,"configureSystem":true,"ospf":true,
+     "interfaces":[{"name":"lo","addresses":["10.255.0.12/32"],"ospf":true,"passive":true},{"name":"uplink","mtu":9000,"addresses":["10.0.2.2/30"],"ospf":true},{"name":"host20","mtu":1500}],
+     "peers":[{"address":"10.255.0.1","remoteAs":65000,"updateSource":"lo"}]}
+  ],
+  "tenants":[{"id":"tenant-a","name":"TENANT-A","fabricId":"lab","l3vni":50000,"importRts":["65000:1"],"exportRts":["65000:1"],"placements":[
+    {"nodeId":"leaf1","tableId":1001,"routerMac":"02:00:00:00:ff:11","bridge":"br50000","vxlan":"vx50000","rd":"10.255.0.11:50000"},
+    {"nodeId":"leaf2","tableId":1001,"routerMac":"02:00:00:00:ff:12","bridge":"br50000","vxlan":"vx50000","rd":"10.255.0.12:50000"}]}],
+  "networks":[
+    {"id":"net10","tenantId":"tenant-a","l2vni":10010,"importRts":["65000:10010"],"exportRts":["65000:10010"],"placements":[{"nodeId":"leaf1","bridge":"br10","vxlan":"vx10010","mac":"02:00:00:00:00:10","gateways":["192.168.10.254/24"],"ports":["host10"],"rd":"10.255.0.11:10"}]},
+    {"id":"net20","tenantId":"tenant-a","l2vni":10020,"importRts":["65000:10020"],"exportRts":["65000:10020"],"placements":[{"nodeId":"leaf2","bridge":"br20","vxlan":"vx10020","mac":"02:00:00:00:00:20","gateways":["192.168.20.254/24"],"ports":["host20"],"rd":"10.255.0.12:20"}]}
+  ]
+}

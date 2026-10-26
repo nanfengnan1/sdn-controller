@@ -1,0 +1,134 @@
+syntax = "proto3";
+package sdn.controller.v1;
+option go_package = "sdn-controller/api/controller/v1;controllerv1";
+import "api/agent/v1/agent.proto";
+
+message Empty {}
+message Interface {
+  string name=1; uint32 mtu=2; string mac=3; repeated string addresses=4;
+  bool ospf=5; bool passive=6;
+}
+message Peer { string address=1; uint32 remote_as=2; string update_source=3; bool rr_client=4; }
+message NodeProfile {
+  string node_id=1; string name=2; string role=3; string fabric_id=4;
+  string router_id=5; string vtep_ip=6; uint32 asn=7;
+  bool configure_system=8; repeated Interface interfaces=9;
+  bool ospf=10; repeated Peer peers=11;
+}
+message TenantPlacement {
+  string node_id=1; uint32 table_id=2; string router_mac=3;
+  string bridge=4; string vxlan=5; string rd=6;
+}
+message Tenant {
+  string id=1; string name=2; string fabric_id=3; uint32 l3vni=4;
+  repeated string import_rts=5; repeated string export_rts=6;
+  repeated TenantPlacement placements=7;
+}
+message NetworkPlacement {
+  string node_id=1; string bridge=2; string vxlan=3; string mac=4;
+  repeated string gateways=5; repeated string ports=6; string rd=7;
+}
+message Network {
+  string id=1; string tenant_id=2; uint32 l2vni=3;
+  repeated string import_rts=4; repeated string export_rts=5;
+  repeated NetworkPlacement placements=6;
+}
+// EditChange replaces the complete candidate. Clients first read GetConfiguration.
+// Materialized node-local objects. IDs are server-generated natural resource keys;
+// DELETE/UNBIND are edits, never stored as desired objects.
+message BridgePolicy { string bridge=1; optional bool neigh_suppress=2; }
+message NodeResources { string node_id=1; repeated sdn.agent.v1.Operation objects=2; repeated BridgePolicy bridge_policies=3; }
+message Configuration { repeated NodeProfile nodes=1; repeated Tenant tenants=2; repeated Network networks=3; repeated NodeResources node_resources=4; }
+message NodeResourcesRequest { string node_id=1; string change_id=2; }
+message NodeResourcesState { NodeResources resources=1; uint64 desired_revision=2; uint64 edit_revision=3; uint64 agent_revision=4; bool adopted=5; string state=6; string mode=7; }
+message EditNodeResourcesRequest { string change_id=1; string node_id=2; uint64 edit_revision=3; repeated sdn.agent.v1.Operation operations=4; repeated BridgePolicy bridge_policies=5; }
+message ImportNodeResourcesRequest { string node_id=1; uint64 expected_agent_revision=2; string request_id=3; }
+message ConfigurationState { uint64 revision=1; Configuration configuration=2; }
+message Node {
+  string node_id=1; string registration_id=2; string instance_id=3; string endpoint=4;
+  sdn.agent.v1.Capabilities capabilities=5; int64 last_seen_unix_ms=6;
+  uint64 agent_revision=7; string state=8; bool adopted=9; string name=10;
+  string role=11; string fabric_id=12; string observation_error=13;
+}
+message NodeRequest { string node_id=1; }
+message AdoptNodeRequest { string node_id=1; uint64 expected_revision=2; bool allow_existing=3; }
+message ListRequest { uint32 page_size=1; string page_token=2; }
+message Nodes { repeated Node items=1; string next_page_token=2; }
+message BeginChangeRequest { uint64 base_revision=1; string request_id=2; }
+message ChangeRequest { string change_id=1; }
+message EditChangeRequest { string change_id=1; Configuration configuration=2; uint64 edit_revision=3; }
+message Change {
+  string id=1; uint64 base_revision=2; uint64 edit_revision=3;
+  Configuration configuration=4; bool frozen=5; string job_id=6; bool aborted=7;
+}
+message NodePlan {
+  string node_id=1; repeated sdn.agent.v1.Operation operations=2;
+  uint64 expected_agent_revision=3; repeated sdn.agent.v1.Operation target_operations=4;
+}
+message Plan {
+  string id=1; string change_id=2; uint64 base_revision=3; uint64 edit_revision=4;
+  repeated NodePlan nodes=5; repeated string warnings=6;
+}
+message CommitChangeRequest { string change_id=1; string request_id=2; string plan_id=3; }
+message JobRequest { string job_id=1; uint64 after_sequence=2; }
+message RetryRollbackRequest { string job_id=1; string node_id=2; string request_id=3; uint64 expected_job_sequence=4; }
+message NodeJob {
+  string node_id=1; string state=2; string transaction_id=3; string task_id=4;
+  uint64 base_revision=5; uint64 agent_revision=6; string error=7;
+  string begin_request_id=8; string commit_request_id=9;
+  bool begin_intent=10; bool commit_intent=11; uint64 agent_sequence=12;
+  string rollback_request_id=13; uint64 rollback_sequence=14; bool rollback_pending=15;
+}
+message JobEvent { string job_id=1; uint64 sequence=2; string state=3; string node_id=4; string message=5; int64 time_unix_ms=6; }
+message Job {
+  string id=1; string change_id=2; string state=3; uint64 desired_revision=4;
+  repeated NodeJob nodes=5; string error=6; uint64 sequence=7; int64 created_unix_ms=8;
+  Plan plan=9; repeated JobEvent events=10;
+}
+message Jobs { repeated Job items=1; string next_page_token=2; }
+message Observation {
+  string node_id=1; int64 collected_unix_ms=2; bool stale=3;
+  string error=4; map<string,string> data=5; uint64 agent_revision=6;
+}
+message TopologyRequest { bool refresh=1; repeated string node_ids=2; }
+message TopologyNode { string id=1; string label=2; string kind=3; string node_id=4; string tenant_id=5; string network_id=6; string source=7; }
+message TopologyLink { string source=1; string target=2; string kind=3; string origin=4; }
+message EvpnRoute {
+ string source_node=1; string rd=2; uint32 type=3; string nlri=4;
+ string mac=5; string ip=6; repeated string next_hops=7; repeated string route_targets=8;
+ string raw_json=9;
+}
+message Topology {
+  repeated TopologyNode nodes=1; repeated TopologyLink links=2;
+  repeated Observation observations=3; repeated EvpnRoute evpn_routes=4;
+  uint64 desired_revision=5; repeated string warnings=6;
+}
+service North {
+ rpc ListNodes(ListRequest) returns(Nodes);
+ rpc GetNode(NodeRequest) returns(Node);
+ rpc AdoptNode(AdoptNodeRequest) returns(Node);
+ rpc GetConfiguration(Empty) returns(ConfigurationState);
+ rpc GetNodeResources(NodeResourcesRequest) returns(NodeResourcesState);
+ rpc EditNodeResources(EditNodeResourcesRequest) returns(Change);
+ rpc ImportNodeResources(ImportNodeResourcesRequest) returns(NodeResourcesState);
+ rpc QueryNode(sdn.agent.v1.QueryRequest) returns(sdn.agent.v1.QueryResponse);
+ rpc BeginChange(BeginChangeRequest) returns(Change);
+ rpc EditChange(EditChangeRequest) returns(Change);
+ rpc GetChange(ChangeRequest) returns(Change);
+ rpc PlanChange(ChangeRequest) returns(Plan);
+ rpc CommitChange(CommitChangeRequest) returns(Job);
+ rpc AbortChange(ChangeRequest) returns(Empty);
+ rpc ListJobs(ListRequest) returns(Jobs);
+ rpc GetJob(JobRequest) returns(Job);
+ rpc RetryRollback(RetryRollbackRequest) returns(Job);
+ rpc WatchJob(JobRequest) returns(stream JobEvent);
+ rpc GetTopology(TopologyRequest) returns(Topology);
+}
+// Durable implementation schema, not an additional public RPC surface.
+message Receipt { string hash=1; string id=2; }
+message Applied { uint64 agent_revision=1; repeated sdn.agent.v1.Operation operations=2; }
+message Database {
+ uint32 schema_version=1; uint64 revision=2; Configuration configuration=3;
+ map<string,Node> nodes=4; map<string,Change> changes=5; map<string,Plan> plans=6;
+ map<string,Job> jobs=7; map<string,Receipt> receipts=8; map<string,Applied> applied=9;
+}

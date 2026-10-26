@@ -1,0 +1,16 @@
+**
+!sdn-agent/
+!sdn-agent/go.mod
+!sdn-agent/go.sum
+!sdn-agent/api/**
+!sdn-controller/
+!sdn-controller/go.mod
+!sdn-controller/go.sum
+!sdn-controller/api/**
+!sdn-controller/internal/**
+!sdn-controller/pkg/**
+!sdn-controller/cmd/**
+!sdn-controller/docker/Dockerfile
+!sdn-controller/docker/controller.conf
+!sdn-controller/docker/supervisor.py
+**/*.log

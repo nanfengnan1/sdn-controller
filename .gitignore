@@ -1,0 +1,18 @@
+/bin/
+/artifacts/
+/lab/state/
+/docker/.env
+/docker/state/
+*.log
+*.lock
+controller-state.json
+
+# Generated documentation
+/.venv-docs/
+/docs/html/
+/docs/_build/
+/docs/**/__pycache__/
+
+# Python caches
+__pycache__/
+*.py[cod]

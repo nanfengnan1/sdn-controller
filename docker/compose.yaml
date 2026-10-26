@@ -1,0 +1,120 @@
+name: sdn-docker
+
+x-agent: &agent
+  image: sdn-agent:alpine
+  build:
+    context: ../..
+    dockerfile: sdn-agent/docker/Dockerfile
+  privileged: true
+  restart: unless-stopped
+  stop_grace_period: 240s
+  environment:
+    SDN_TOKEN: ${SDN_AGENT_TOKEN:?run python3 docker/manage.py init}
+  networks: [management]
+  depends_on:
+    controller: {condition: service_healthy}
+
+services:
+  controller:
+    image: sdn-controller:alpine
+    build: {context: ../.., dockerfile: sdn-controller/docker/Dockerfile}
+    container_name: sdn-docker-controller
+    environment:
+      SDN_ADMIN_TOKEN: ${SDN_ADMIN_TOKEN:?run init}
+      SDN_VIEWER_TOKEN: ${SDN_VIEWER_TOKEN:?run init}
+      SDN_AGENT_TOKEN: ${SDN_AGENT_TOKEN:?run init}
+    ports: ['127.0.0.1:${SDN_GRPC_PORT:-29090}:19090']
+    volumes:
+      - etcd-data:/etcd-data
+      - ./state/config/controller/controller.conf:/etc/sdn-controller/controller.conf:ro
+    restart: unless-stopped
+    stop_grace_period: 60s
+    networks: [management]
+  web:
+    image: sdn-web:alpine
+    build: {context: ../.., dockerfile: sdn-web/docker/Dockerfile, target: web}
+    container_name: sdn-docker-web
+    command: [-controller, 'controller:19090', -insecure]
+    environment:
+      SDN_ADMIN_TOKEN: ${SDN_ADMIN_TOKEN:?run init}
+      SDN_VIEWER_TOKEN: ${SDN_VIEWER_TOKEN:?run init}
+    ports: ['${SDN_WEB_BIND:-0.0.0.0}:${SDN_WEB_PORT:-28080}:8080']
+    restart: unless-stopped
+    stop_grace_period: 40s
+    networks: [management]
+    depends_on:
+      controller: {condition: service_healthy}
+  spine:
+    <<: *agent
+    container_name: sdn-docker-spine
+    hostname: spine
+    volumes:
+      - agent-spine:/var/lib/sdn-agent
+      - frr-spine:/etc/frr
+      - redis-spine:/var/lib/redis
+      - ./state/config/spine/agent.conf:/etc/sdn-agent/agent.conf:ro
+  leaf1:
+    <<: *agent
+    container_name: sdn-docker-leaf1
+    hostname: leaf1
+    volumes:
+      - agent-leaf1:/var/lib/sdn-agent
+      - frr-leaf1:/etc/frr
+      - redis-leaf1:/var/lib/redis
+      - ./state/config/leaf1/agent.conf:/etc/sdn-agent/agent.conf:ro
+  leaf2:
+    <<: *agent
+    container_name: sdn-docker-leaf2
+    hostname: leaf2
+    volumes:
+      - agent-leaf2:/var/lib/sdn-agent
+      - frr-leaf2:/etc/frr
+      - redis-leaf2:/var/lib/redis
+      - ./state/config/leaf2/agent.conf:/etc/sdn-agent/agent.conf:ro
+  pc1:
+    profiles: [lab]
+    image: sdn-agent:alpine
+    container_name: sdn-docker-pc1
+    entrypoint: [sleep, infinity]
+    init: true
+    stop_grace_period: 10s
+    privileged: true
+    network_mode: none
+    restart: unless-stopped
+    healthcheck: {disable: true}
+  pc2:
+    profiles: [lab]
+    image: sdn-agent:alpine
+    container_name: sdn-docker-pc2
+    entrypoint: [sleep, infinity]
+    init: true
+    stop_grace_period: 10s
+    privileged: true
+    network_mode: none
+    restart: unless-stopped
+    healthcheck: {disable: true}
+  helper:
+    image: sdn-agent:alpine
+    container_name: sdn-docker-helper
+    profiles: [tools]
+    entrypoint: [sleep, infinity]
+    init: true
+    stop_grace_period: 10s
+    privileged: true
+    pid: host
+    network_mode: host
+    healthcheck: {disable: true}
+
+networks:
+  management: {}
+volumes:
+  etcd-data: {}
+  redis-spine: {}
+  redis-leaf1: {}
+  redis-leaf2: {}
+  agent-spine: {}
+  agent-leaf1: {}
+  agent-leaf2: {}
+  frr-spine: {}
+  frr-leaf1: {}
+  frr-leaf2: {}
