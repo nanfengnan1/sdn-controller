@@ -464,8 +464,8 @@ func Validate(ops []*a.Operation) error {
 				return fmt.Errorf("invalid VXLAN VNI/port")
 			}
 			ip, e := netip.ParseAddr(x.Local)
-			if e != nil || !ip.Is4() {
-				return fmt.Errorf("VXLAN local VTEP requires IPv4")
+			if e != nil || ip.IsUnspecified() || ip.IsMulticast() || ip.IsLinkLocalUnicast() || ip.Zone() != "" {
+				return fmt.Errorf("VXLAN local VTEP requires unicast IPv4/IPv6 without a zone")
 			}
 			if vnis[x.Vni] != "" {
 				return fmt.Errorf("VNI %d is already used", x.Vni)

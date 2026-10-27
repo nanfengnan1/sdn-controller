@@ -148,3 +148,23 @@ Commit 回复丢失、Undo 失败后重启，而不是只重复实现细节。
 文档变化使用 :doc:`build-docs` 的严格 HTML 构建检查引用和格式。
 新增测试容器使用独立名称与标签，清理前校验归属，禁止使用全局 Docker prune。
 
+VPP 双栈查询联调
+----------------------------------------
+
+资源校验和 Planner 的 dualstack_test.go 覆盖 IPv6 VTEP、IPv6 BGP 邻居、
+router-id 约束以及 configureSystem 不再关闭 IPv6。Agent 与 Web 位于同级目录时，
+从共同父目录构建 docker/Dockerfile 为 alpine/sdn-controller:vpp-dev，
+同时准备 alpine/sdn-web:vpp-dev 与 alpine/sdn-agent:vpp-dev。
+
+在 Agent 仓库运行：
+
+.. code-block:: bash
+
+   SDN_VPP_STACK=1 SDN_VPP_UNDERLAY=6 SDN_VPP_WORKERS=2 python3 lab/vpp_evpn.py
+
+脚本启动独立 Controller/Web，三个 VPP 节点真实注册和接管，使用 viewer 令牌
+通过 HTTP 查询九类 VPP 状态，并验证 VXLAN/路由地址族筛选；报告位于 Agent 的
+artifacts/vpp/dual-ipv6/stack-query.json。测试不会改动已有部署或物理 NIC。
+设置 SDN_VPP_BROWSER=1 时等待 Web 仓库的 tests/e2e/vpp-query.cjs 完成浏览器验收。
+数据面正确性另由 Agent 的 L2/IRB/GSO 实验验证，不能由查询成功推导。
+

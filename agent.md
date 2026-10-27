@@ -1,5 +1,9 @@
 # sdn-controller 设计文档
 
+## 2026-10-27：VPP 双栈与查询联调
+
+已支持 IPv4/IPv6 单播 VTEP、IPv6 underlay BGP 邻居及 update_source；router-id 仍为 IPv4。拒绝未指定、组播、链路本地及带 zone 的 VTEP。`configureSystem` 改为启用 IPv6 和转发，不再关闭 IPv6。新增 Planner/资源校验回归测试。协议不新增 VPP 专用 RPC，查询继续按 Agent 能力校验、透传类型化记录，VPP 原生接口及远端映射由 Agent 提供。真实联调入口为同级 sdn-agent 的 `lab/vpp_evpn.py`（`SDN_VPP_STACK=1`），见 [测试说明](docs/developer/testing.rst)。未发布或修改 v1.0。
+
 ## 当前资源级管理扩展（2026-10-25）
 
 Controller 已增加逐节点独立资源管理；本节覆盖后文“完整配置是唯一入口”等旧实现边界。

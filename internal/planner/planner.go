@@ -38,8 +38,12 @@ func validRT(s string) bool {
 	return e == nil && asn > 0 && (asn <= 65535 || suffix <= 65535)
 }
 
-func ptr[T any](x T) *T      { return &x }
-func ipv4(s string) bool     { x, e := netip.ParseAddr(s); return e == nil && x.Is4() }
+func ptr[T any](x T) *T  { return &x }
+func ipv4(s string) bool { x, e := netip.ParseAddr(s); return e == nil && x.Is4() }
+func unicastIP(s string) bool {
+	x, e := netip.ParseAddr(s)
+	return e == nil && !x.IsUnspecified() && !x.IsMulticast() && !x.IsLinkLocalUnicast() && x.Zone() == ""
+}
 func validMAC(s string) bool { x, e := net.ParseMAC(s); return e == nil && len(x) == 6 && x[0]&1 == 0 }
 func vni(v uint32) bool      { return v > 0 && v <= 16777215 }
 func Compile(c *p.Configuration) (map[string][]*a.Operation, error) {
@@ -107,8 +111,8 @@ func Compile(c *p.Configuration) (map[string][]*a.Operation, error) {
 		if n.Role != "leaf" && n.Role != "spine" {
 			return nil, fmt.Errorf("node role must be leaf or spine")
 		}
-		if n.Role == "leaf" && !ipv4(n.VtepIp) {
-			return nil, fmt.Errorf("leaf VTEP IPv4 required")
+		if n.Role == "leaf" && !unicastIP(n.VtepIp) {
+			return nil, fmt.Errorf("leaf VTEP requires unicast IPv4/IPv6")
 		}
 		nodes[n.NodeId] = n
 		for _, kind := range []string{"router", "vtep"} {
@@ -151,10 +155,10 @@ func Compile(c *p.Configuration) (map[string][]*a.Operation, error) {
 		}
 		seenPeer := map[string]bool{}
 		for _, peer := range n.Peers {
-			if peer == nil || !ipv4(peer.Address) || peer.RemoteAs == 0 || seenPeer[peer.Address] {
+			if peer == nil || !unicastIP(peer.Address) || peer.RemoteAs == 0 || seenPeer[peer.Address] {
 				return nil, fmt.Errorf("invalid/duplicate BGP peer")
 			}
-			if peer.UpdateSource != "" && !ifaceRE.MatchString(peer.UpdateSource) && !ipv4(peer.UpdateSource) {
+			if peer.UpdateSource != "" && !ifaceRE.MatchString(peer.UpdateSource) && !unicastIP(peer.UpdateSource) {
 				return nil, fmt.Errorf("invalid BGP update_source")
 			}
 			seenPeer[peer.Address] = true
@@ -321,7 +325,7 @@ func Compile(c *p.Configuration) (map[string][]*a.Operation, error) {
 		}
 		if n.ConfigureSystem {
 			settings := []*a.Sysctl{}
-			for _, s := range [][2]string{{"net.ipv4.conf.all.rp_filter", "0"}, {"net.ipv4.conf.default.rp_filter", "0"}, {"net.ipv6.conf.all.disable_ipv6", "1"}, {"net.ipv6.conf.default.disable_ipv6", "1"}, {"net.ipv4.ip_forward", "1"}} {
+			for _, s := range [][2]string{{"net.ipv4.conf.all.rp_filter", "0"}, {"net.ipv4.conf.default.rp_filter", "0"}, {"net.ipv6.conf.all.disable_ipv6", "0"}, {"net.ipv6.conf.default.disable_ipv6", "0"}, {"net.ipv4.ip_forward", "1"}, {"net.ipv6.conf.all.forwarding", "1"}} {
 				settings = append(settings, &a.Sysctl{Key: s[0], Value: s[1]})
 			}
 			for _, f := range []string{"iptables", "ip6tables", "arptables"} {
