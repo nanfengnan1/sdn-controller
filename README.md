@@ -167,7 +167,7 @@ Controller 本身提供 gRPC，不保存 Web 的 HTTP 响应缓存。Desired / J
 
 支持添加/删除租户、网络、placement、网关地址和端口绑定；配置差异转换为 Agent op。支持接口显式属性、BGP peer 与 EVPN RD/RT 等更新。VXLAN/VRF/L3VNI 身份、受管 ASN/router-id 等原地变化明确拒绝，需要规划显式拆除/重建。节点 profile 移除也暂不支持。移除 profile 中物理接口描述会移除受管地址/协议引用，保留物理接口的 UP/MTU/MAC 状态。
 
-旧 NodeProfile 模型的 configureSystem 针对 IPv4 EVPN 实验（包括禁用 IPv6），不能直接用于 IPv6 目标。逐节点 nodeResources 已暴露 IPv6 地址/路由、BGP IPv6、OSPFv3 和 EVPN Type-5；具体范围、前置条件和验证边界见[逐资源操作](docs/user/resources.rst)。静态 MAC/邻居保活、交换机/VPP 适配器、FPM/ZAPI、LLDP 物理拓扑、租户级用户权限及自动 reconciler 尚未实现。Controller 使用 Agent GetTask 轮询跟踪进度，未使用 Agent WatchTasks 消费；北向 WatchJob 从 Controller 持久化事件重放。
+旧 NodeProfile 模型的 configureSystem 针对 IPv4 EVPN 实验（包括禁用 IPv6），不能直接用于 IPv6 目标。逐节点 nodeResources 已暴露 IPv6 地址/路由、BGP IPv6、OSPFv3 和 EVPN Type-5；具体范围、前置条件和验证边界见[逐资源操作](docs/user/resources.rst)。VPP 邻居保活已通过逐节点资源开关接入；通用静态 MAC、Linux 邻居保活、交换机适配器、FPM/ZAPI、LLDP 物理拓扑、租户级用户权限及自动 reconciler 尚未实现。Controller 使用 Agent GetTask 轮询跟踪进度，未使用 Agent WatchTasks 消费；北向 WatchJob 从 Controller 持久化事件重放。
 
 观测缓存可重建，Controller 重启后需要 refresh。单次刷新总上限 20 秒、每节点 5 秒、最多并发 4 个采集；并行刷新被拒绝。采集失败保留旧数据并标 stale。拓扑查询最多返回 2000 条 EVPN 路由，原始观测响应总预算 512 KiB；被省略数据明确警示。实际物理连接不能根据 Type-2/Type-3 推导。
 

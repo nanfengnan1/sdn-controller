@@ -228,3 +228,21 @@ VerifyResources 逐对象核验真实 Linux/FRR 状态，再原子保存目标�
      - instance / network / interface
      - create、set 或 delete；version=2/3、VRF、area 等
 
+
+VPP 邻居保活
+------------
+
+VPP Agent 声明 neighbor-keepalive/v1 能力时，可设置节点级
+NEIGHBOR_KEEPALIVE / SET，数据为 neighborKeepalive.enabled（true / false）。
+默认关闭；Linux Agent 不支持。不使用 DELETE 关闭。
+
+在 Web“二层网络 BD”选择“邻居保活（节点开关）”，加入候选、预览并提交。
+使用已有导入/候选流程，不能绕过节点能力或 revision 检查。
+NEIGHBOR_KEEPALIVE_STATUS 查询来自 VPP，支持 IPv4/IPv6，显示策略和每 IP
+探测状态、尝试次数、确认时间、发送错误与容量计数。
+
+保活只针对已学习到的本地动态 MAC/IP：单播 ARP Request / IPv6 NS
+由 VPP 发送，有效学习续期，三次失败撤销对应 IP；同 MAC 的其他 IP 保留。
+不是 ARP/ND 抑制，也不是向远端周期性发送 Type-2。
+启用需要配套新版 VPP/Agent 镜像及 neighbor_keepalive_plugin.so；
+MAC ageing 为 0 或 >=120 秒，默认 300 秒满足要求。Linux 节点不显示此开关。

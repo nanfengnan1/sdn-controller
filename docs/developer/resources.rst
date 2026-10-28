@@ -129,3 +129,12 @@ VerifyResources（Agent 在执行锁保护下实际读回），并二次核对 i
 Controller 的配置成功不可替代转发验证。默认部署为 Controller、Web/Gateway、
 Spine、Leaf1、Leaf2 五个容器，PC 容器只在可选实验场景启用。
 
+
+邻居保活资源
+------------
+
+NEIGHBOR_KEEPALIVE 使用节点单例 resource/neighbor_keepalive，不需要 BD 标识；
+enabled 为 optional bool，合并时必须保留明确 false。只允许 SET，拒绝 DELETE
+和缺少 enabled 的请求。资源编译、导入与变更计划沿用共用 Operation，
+根据 Agent Capabilities 拒绝 Linux 节点，不额外维护控制器探测定时器。
+计时和报文在 VPP 原生插件，Agent Undo/Verify 负责策略回滚与实际读回。

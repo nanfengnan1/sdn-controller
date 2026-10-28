@@ -18,7 +18,8 @@ import (
 )
 
 var payloads = map[a.OpCode]string{
-	a.OpCode_NODE_NETWORK: "network", a.OpCode_INTERFACE: "interface", a.OpCode_ADDRESS: "address",
+	a.OpCode_NEIGHBOR_KEEPALIVE: "neighbor_keepalive",
+	a.OpCode_NODE_NETWORK:       "network", a.OpCode_INTERFACE: "interface", a.OpCode_ADDRESS: "address",
 	a.OpCode_TENANT: "tenant", a.OpCode_BD: "bridge", a.OpCode_BD_PORT: "bridge_port", a.OpCode_BD_TENANT: "binding",
 	a.OpCode_VXLAN: "vxlan", a.OpCode_STATIC_ROUTE: "route", a.OpCode_OSPF_INSTANCE: "ospf", a.OpCode_OSPF_NETWORK: "ospf_network",
 	a.OpCode_OSPF_INTERFACE: "ospf_interface", a.OpCode_OSPF6_INSTANCE: "ospf", a.OpCode_OSPF6_INTERFACE: "ospf6_interface",
@@ -69,7 +70,7 @@ func Key(o *a.Operation) (string, error) {
 	}
 	var fields []string
 	switch o.Code {
-	case a.OpCode_NODE_NETWORK:
+	case a.OpCode_NODE_NETWORK, a.OpCode_NEIGHBOR_KEEPALIVE:
 		fields = nil
 	case a.OpCode_TENANT, a.OpCode_BD, a.OpCode_INTERFACE, a.OpCode_VXLAN:
 		fields = []string{"name"}
@@ -122,7 +123,7 @@ func canonicalAction(c a.OpCode) a.Action {
 	switch c {
 	case a.OpCode_BD_PORT, a.OpCode_BD_TENANT, a.OpCode_TENANT_L3VNI:
 		return a.Action_BIND
-	case a.OpCode_NODE_NETWORK, a.OpCode_INTERFACE, a.OpCode_OSPF_INTERFACE, a.OpCode_OSPF6_INTERFACE, a.OpCode_BGP_EVPN_PEER, a.OpCode_BGP_EVPN_GLOBAL, a.OpCode_EVPN_L2VNI, a.OpCode_EVPN_TENANT, a.OpCode_BGP_AF_PEER, a.OpCode_EVPN_TYPE5:
+	case a.OpCode_NEIGHBOR_KEEPALIVE, a.OpCode_NODE_NETWORK, a.OpCode_INTERFACE, a.OpCode_OSPF_INTERFACE, a.OpCode_OSPF6_INTERFACE, a.OpCode_BGP_EVPN_PEER, a.OpCode_BGP_EVPN_GLOBAL, a.OpCode_EVPN_L2VNI, a.OpCode_EVPN_TENANT, a.OpCode_BGP_AF_PEER, a.OpCode_EVPN_TYPE5:
 		return a.Action_SET
 	default:
 		return a.Action_CREATE
@@ -188,9 +189,12 @@ func canonical(o *a.Operation) (*a.Operation, error) {
 	return x, e
 }
 func allowed(o *a.Operation) bool {
+	if o.Code == a.OpCode_NEIGHBOR_KEEPALIVE {
+		return o.Action == a.Action_SET && o.GetNeighborKeepalive() != nil && o.GetNeighborKeepalive().Enabled != nil
+	}
 	switch o.Action {
 	case a.Action_DELETE:
-		return o.Code != a.OpCode_INTERFACE && o.Code != a.OpCode_NODE_NETWORK && o.Code != a.OpCode_BD_PORT && o.Code != a.OpCode_BD_TENANT && o.Code != a.OpCode_TENANT_L3VNI
+		return o.Code != a.OpCode_NEIGHBOR_KEEPALIVE && o.Code != a.OpCode_INTERFACE && o.Code != a.OpCode_NODE_NETWORK && o.Code != a.OpCode_BD_PORT && o.Code != a.OpCode_BD_TENANT && o.Code != a.OpCode_TENANT_L3VNI
 	case a.Action_UNBIND:
 		return o.Code == a.OpCode_BD_PORT || o.Code == a.OpCode_BD_TENANT || o.Code == a.OpCode_TENANT_L3VNI
 	case a.Action_BIND:
@@ -354,7 +358,7 @@ func Replay(journal []*a.Operation) ([]*a.Operation, error) {
 }
 func rank(c a.OpCode) int {
 	switch c {
-	case a.OpCode_NODE_NETWORK:
+	case a.OpCode_NODE_NETWORK, a.OpCode_NEIGHBOR_KEEPALIVE:
 		return 0
 	case a.OpCode_TENANT:
 		return 10

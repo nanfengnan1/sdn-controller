@@ -657,3 +657,11 @@ Stage 只表示节点候选通过当前校验，不会锁住全网资源，也�
 - [Agent 实测验收记录](../sdn-agent/docs/validation.md)
 
 下一步按资源模型、北向协议、节点接入、Planner、任务编排、观测拓扑的顺序细化和实现；实现变更需要同步更新本文与协议契约测试。
+
+## VPP 邻居保活适配
+
+NEIGHBOR_KEEPALIVE / SET 是 nodeResources 的节点单例 resource/neighbor_keepalive。
+neighbor_keepalive.enabled 为 optional bool，明确 false 必须保留；不支持 DELETE。
+复用导入、候选、能力检查、Plan、Commit、Agent Undo 和实际读回。
+仅声明该操作的 VPP Agent 可执行；查询 NEIGHBOR_KEEPALIVE_STATUS 透传，
+Controller 不调度 ARP/ND，也不从 BGP 重发消息推断主机存活。
