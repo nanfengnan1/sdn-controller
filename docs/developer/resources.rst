@@ -138,3 +138,39 @@ enabled 为 optional bool，合并时必须保留明确 false。只允许 SET，
 和缺少 enabled 的请求。资源编译、导入与变更计划沿用共用 Operation，
 根据 Agent Capabilities 拒绝 Linux 节点，不额外维护控制器探测定时器。
 计时和报文在 VPP 原生插件，Agent Undo/Verify 负责策略回滚与实际读回。
+
+可修改的 VXLAN 外层路由表
+--------------------------
+
+配置链路为 Web 资源候选 → Controller 差异计划 → Agent gRPC →
+VPP composite Driver → 本地适配器 → vxlan_set_encap_vrf Binary API。
+protobuf 在 Vxlan 新增 optional uint32 encap_vrf_id = 7，JSON 为 encapVrfId。
+optional 保留 SET 中显式回到 0 的语义。能力标志为 vxlan-encap-vrf/v1；
+Controller 对 SET 及非零表 CREATE 检查该能力，避免旧节点静默忽略字段。
+
+Controller 保留对象身份，差异编译为单条 VXLAN SET，不用删除/重建。
+合并时保留原有 UDP 端口。原有租户 VRF 与外层 VRF 独立；非零外层表引用
+节点内已管理的 TENANT 路由表。先切换、再删除旧表，避免删除顺序提前
+释放仍被使用的表。
+
+2026-10-28 外层 VRF 验收
+------------------------
+
+Agent / Controller / Gateway 全部 Go 测试、45 项 Python 适配器测试、
+25 项 Docker/Python 测试、Web 18 项测试及类型检查/生产构建通过。
+真实浏览器验证外层 VRF 表单提交显式 0，以及原生查询列。
+
+原生 CLI/API 覆盖 IPv4 / IPv6 的多点与固定目的接口、目标表冲突、
+保留 BD/远端表、释放旧接收键以及删除后释放新键；
+在无 worker 与两个 worker 下均通过。
+
+使用配套集成测试镜像运行两个完整隔离实验，分别采用 IPv4 / IPv6 VTEP，
+内层均为双栈，worker 为 0，sourceOverrides=false。
+真实 Web Gateway / Controller 提交 0→100→200→0，验证双向跨网段通信、
+接口及租户绑定保留、新适配器进程从持久化状态恢复、
+修改失败回滚、删除失败后 Linux 镜像及非零表原生隧道恢复。
+补充修复大 VNI/VRF ID 被科学计数法读回导致的校验失败。
+
+汇总报告：配套 Agent 仓库
+artifacts/vpp/encap-vrf-20261028-143107/verification.json。
+未替换运行环境或覆盖 v1.0；此次为软件路径验收，不代表物理网卡或性能验收。

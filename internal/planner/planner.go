@@ -570,6 +570,17 @@ func Build(change *p.Change, db *p.Database) (*p.Plan, error) {
 			caps[cap.Code] = cap.Rollback
 		}
 		for _, o := range ops {
+			if o.Code == a.OpCode_VXLAN && (o.Action == a.Action_SET || o.GetVxlan().GetEncapVrfId() != 0) {
+				supported := false
+				for _, feature := range n.GetCapabilities().GetFeatures() {
+					if feature == "vxlan-encap-vrf/v1" {
+						supported = true
+					}
+				}
+				if !supported {
+					return nil, fmt.Errorf("node %s lacks vxlan-encap-vrf/v1", id)
+				}
+			}
 			if !caps[o.Code] {
 				return nil, fmt.Errorf("node %s lacks rollback-capable %s", id, o.Code)
 			}
@@ -588,6 +599,18 @@ func delta(old, next []*a.Operation) ([]*a.Operation, error) {
 	}
 	for _, o := range next {
 		newMap[o.Id] = o
+	}
+	// Removal runs before updates. Keep an old outer table until its surviving
+	// tunnels have switched in a separate committed change.
+	for _, o := range old {
+		if o.Code != a.OpCode_TENANT || newMap[o.Id] != nil {
+			continue
+		}
+		for _, vx := range old {
+			if vx.Code == a.OpCode_VXLAN && vx.GetVxlan().GetEncapVrfId() == o.GetTenant().TableId && newMap[vx.Id] != nil {
+				return nil, fmt.Errorf("switch VXLAN %s away from outer VRF %s in a separate change before deleting the VRF", vx.GetVxlan().Name, o.GetTenant().Name)
+			}
+		}
 	}
 	var out []*a.Operation
 	for i := len(old) - 1; i >= 0; i-- {
@@ -643,7 +666,18 @@ func delta(old, next []*a.Operation) ([]*a.Operation, error) {
 				remove.Action = a.Action_DELETE
 				remove.DependsOn = nil
 				out = append(out, remove)
-			case a.OpCode_VXLAN, a.OpCode_TENANT, a.OpCode_BD_TENANT, a.OpCode_TENANT_L3VNI:
+			case a.OpCode_VXLAN:
+				before := proto.Clone(prev.GetVxlan()).(*a.Vxlan)
+				after := proto.Clone(o.GetVxlan()).(*a.Vxlan)
+				before.EncapVrfId, after.EncapVrfId = nil, nil
+				before.Underlay, after.Underlay = "", ""
+				if !proto.Equal(before, after) {
+					return nil, fmt.Errorf("only VXLAN outer VRF/underlay may change in place")
+				}
+				x.Action = a.Action_SET
+				x.Data = &a.Operation_Vxlan{Vxlan: &a.Vxlan{Name: o.GetVxlan().Name,
+					EncapVrfId: proto.Uint32(o.GetVxlan().GetEncapVrfId()), Underlay: o.GetVxlan().Underlay}}
+			case a.OpCode_TENANT, a.OpCode_BD_TENANT, a.OpCode_TENANT_L3VNI:
 				return nil, fmt.Errorf("in-place identity change of %s requires explicit remove/create changes", o.Id)
 			case a.OpCode_BD:
 				x.Action = a.Action_SET
@@ -714,6 +748,7 @@ func orderRemovals(ops []*a.Operation) ([]*a.Operation, error) {
 				name := o.GetTenant().Name
 				requires = (before.Code == a.OpCode_BGP_INSTANCE && before.GetBgp().Vrf == name) || (before.Code == a.OpCode_TENANT_L3VNI && before.GetL3Vni().Tenant == name) || (before.Code == a.OpCode_BD_TENANT && before.GetBinding().Tenant == name)
 				requires = requires || (before.GetOspf() != nil && before.GetOspf().Vrf == name)
+				requires = requires || (before.Code == a.OpCode_VXLAN && before.GetVxlan().GetEncapVrfId() == o.GetTenant().TableId)
 			}
 			if requires {
 				dependencies[i] = append(dependencies[i], j)

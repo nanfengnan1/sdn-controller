@@ -177,7 +177,7 @@ func canonical(o *a.Operation) (*a.Operation, error) {
 			m.Set(f, protoreflect.ValueOfString(v.String()))
 		}
 	}
-	if x.Code == a.OpCode_VXLAN && x.GetVxlan().Port == 0 {
+	if x.Code == a.OpCode_VXLAN && x.Action != a.Action_SET && x.GetVxlan().Port == 0 {
 		x.GetVxlan().Port = 4789
 	}
 	if x.Code == a.OpCode_STATIC_ROUTE && x.GetRoute().Table == 0 {
@@ -189,6 +189,11 @@ func canonical(o *a.Operation) (*a.Operation, error) {
 	return x, e
 }
 func allowed(o *a.Operation) bool {
+	if o.Code == a.OpCode_VXLAN && o.Action == a.Action_SET {
+		x := o.GetVxlan()
+		return x != nil && x.EncapVrfId != nil && x.Vni == 0 && x.Local == "" && x.Port == 0 && !x.Learning
+	}
+
 	if o.Code == a.OpCode_NEIGHBOR_KEEPALIVE {
 		return o.Action == a.Action_SET && o.GetNeighborKeepalive() != nil && o.GetNeighborKeepalive().Enabled != nil
 	}
@@ -253,8 +258,8 @@ func Apply(base []*a.Operation, edits []*a.Operation) ([]*a.Operation, error) {
 			delete(objects, x.Id)
 			continue
 		}
-		if edit.Action == a.Action_SET && old == nil && edit.Code == a.OpCode_BD {
-			return nil, fmt.Errorf("BD does not exist; create it first")
+		if edit.Action == a.Action_SET && old == nil && (edit.Code == a.OpCode_BD || edit.Code == a.OpCode_VXLAN) {
+			return nil, fmt.Errorf("%s does not exist; create it first", edit.Code)
 		}
 		if edit.Action == a.Action_SET && old != nil {
 			if edit.Code == a.OpCode_NODE_NETWORK {
@@ -475,6 +480,9 @@ func Validate(ops []*a.Operation) error {
 				return fmt.Errorf("VNI %d is already used", x.Vni)
 			}
 			vnis[x.Vni] = name
+			if x.GetEncapVrfId() >= 4294967295 || (x.GetEncapVrfId() >= 253 && x.GetEncapVrfId() <= 255) {
+				return fmt.Errorf("invalid/reserved VXLAN outer VRF table")
+			}
 			vxlan[name] = o
 		case a.OpCode_INTERFACE:
 			x := o.GetInterface()
@@ -633,6 +641,11 @@ func Validate(ops []*a.Operation) error {
 			if vrf == "" || l3[vrf] == 0 {
 				return fmt.Errorf("Type-5 export requires tenant BGP and L3VNI")
 			}
+		}
+	}
+	for _, o := range vxlan {
+		if table := o.GetVxlan().GetEncapVrfId(); table != 0 && tables[table] == "" {
+			return fmt.Errorf("VXLAN outer VRF table %d requires a managed VRF resource", table)
 		}
 	}
 	return nil

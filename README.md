@@ -1,5 +1,7 @@
 # sdn-controller
 
+VPP 节点支持通过 nodeResources 修改 VXLAN 外层 VRF（encapVrfId），Planner 生成 SET 并检查 vxlan-encap-vrf/v1 能力；非零表引用已管理的 VRF，旧表应在隧道切换后另行删除。步骤和承载网络前提见 [资源手册](docs/user/resources.rst)。
+
 `sdn-controller` 是用 Go 编写的**全网配置与任务协调服务**。它接收 Web Gateway、CLI 或自动化客户端的配置请求，保存期望配置，将变更编译成各节点的执行计划，再通过 gRPC 交给 `sdn-agent` 管理本地数据面。当前 Agent 提供 Linux 和 FRR 适配器；Controller 负责全局模型、版本冲突、任务推进和持久恢复。
 
 北向使用版本化 Protobuf，Web 和 CLI 共享同一接口，关闭浏览器不会取消已受理任务。项目采用单写入存储；多节点提交可以部分成功，当前没有跨节点原子事务或自动多实例接管。扩展数据面由 Agent 实现统一操作和能力，Controller 按能力生成计划，开发入口见[扩展流程](docs/developer/extensions.rst)。
