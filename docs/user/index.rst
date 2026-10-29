@@ -50,6 +50,7 @@
    configuration
    cli
    resources
+   ips
    jobs-topology
    recovery
    troubleshooting

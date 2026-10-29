@@ -17,6 +17,10 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
     CGO_ENABLED=0 go build -trimpath -o /out/sdn-controller ./cmd/sdn-controller && \
     CGO_ENABLED=0 go build -trimpath -o /out/sdnc ./cmd/sdnc
 FROM ${ALPINE_IMAGE}
+ARG SOURCE_REVISION=unknown
+LABEL org.opencontainers.image.title="SDN Controller" \
+      org.opencontainers.image.source="https://github.com/nanfengnan1/sdn-controller" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}"
 RUN apk add --no-cache ca-certificates tini python3 && \
     mkdir -p /var/lib/sdn-controller /etc/sdn-controller /run/sdn-controller /etcd-data && \
     chmod 700 /run/sdn-controller /etcd-data

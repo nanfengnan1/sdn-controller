@@ -679,7 +679,7 @@ func delta(old, next []*a.Operation) ([]*a.Operation, error) {
 					EncapVrfId: proto.Uint32(o.GetVxlan().GetEncapVrfId()), Underlay: o.GetVxlan().Underlay}}
 			case a.OpCode_TENANT, a.OpCode_BD_TENANT, a.OpCode_TENANT_L3VNI:
 				return nil, fmt.Errorf("in-place identity change of %s requires explicit remove/create changes", o.Id)
-			case a.OpCode_BD:
+			case a.OpCode_BD, a.OpCode_IPS_RULE, a.OpCode_IPS_INTERFACE:
 				x.Action = a.Action_SET
 			case a.OpCode_BD_PORT:
 				if prev.GetBridgePort().Bridge != o.GetBridgePort().Bridge {

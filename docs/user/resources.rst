@@ -311,3 +311,9 @@ EVPN 强行选路。使用其他 IGP/BGP 泄漏方案时同样验证 show ip nht
 接口移动、该路由泄漏及其启动恢复由承载网络配置负责，
 VXLAN SET 不自动配置它们。当前 Agent 的 STATIC_ROUTE 资源没有 nexthop-vrf 字段；
 可在部署时的 FRR 配置文件中维护此项。
+
+
+Snort IPS
+----------------------------
+
+规则、接口绑定、基础文件与恢复说明见 :doc:`ips`。

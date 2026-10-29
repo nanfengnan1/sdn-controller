@@ -185,3 +185,12 @@ SDNC_TEST_ETCD=http://127.0.0.1:12379 go test -race -v ./internal/repository
 模拟 Agent 用例覆盖真实 gRPC 调用、幂等、跨节点失败、丢失 Commit 响应、权限变化后的未知结果、重启恢复和事件重放。模拟协议测试不等于验证转发；完整集成测试另行使用独立 Docker 网络和真实 Linux/FRR。
 
 历史 [完整验收记录](docs/validation.md) 记录 11 个源码检查阶段、17 项真实网络/API 检查、10 项浏览器检查通过。该记录对应旧 `sdnc-it` 实验；复现与清理命令见 [独立实验说明](lab/README.md)，其 Web 使用 `http://<部署服务器IP>:18080`，凭据在 `lab/state/tokens.json`。本项目源码镜像 Compose 使用 `http://<部署服务器IP>:28080` 和 `docker/state/tokens.json`，两套环境不要混用。
+
+
+### Snort IPS
+
+支持带 ``snort-ips/v1`` 能力的 Agent：规则按 SID 管理，
+通过候选和事务创建/修改/删除；支持 VPP 三层接口/BVI 的检查方向绑定。
+Web 提供独立 **IPS 配置** 菜单和实际加载状态查询。
+Agent 使用已有 Redis + confd 校验并热重载 Snort3。
+三个项目需同步更新协议后构建，启用方式见 sdn-agent 的 ``docs/user/ips.rst``。

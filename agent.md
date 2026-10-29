@@ -1,5 +1,20 @@
 # sdn-controller 设计文档
 
+## 2026-10-28：Snort IPS（Redis + confd）
+
+本次实现采用 Agent 现有 Redis，不在 Agent 新增 etcd。Controller 保持原有存储。
+新增 IPS_RULE / IPS_INTERFACE 和 IPS_STATUS / IPS_RULES，能力 snort-ips/v1。
+Web 独立 IPS 页面复用候选、预览、事务提交、Undo 和实际查询。
+confd 按次生成完整 Lua，Snort 校验后热重载，确认完成及代次后才接受配置；
+失败恢复旧配置。接口使用 VPP 原生名称，IP feature arcs 不覆盖纯二层转发。
+默认 IPS 关闭；VPP 镜像安装 Snort，启用后在 Agent 容器内运行。
+已完成镜像构建和软件隔离验收：31 项 Python、20 项 Web 单测、三仓库 Go 测试、
+20 项 IPS API/转发/重启检查、真实浏览器创建/查询/删除规则，以及 29 项 EVPN 双栈回归通过。
+报告位于配套 Agent 仓库 artifacts/ips/redis-20261028-164849/verification.json。
+浏览器首次因测试选择器未等待加载完成失败，修正后复测通过；原始记录保留。
+未测试物理 NIC 或吞吐性能；未替换现有运行容器和 v1.0 镜像；没有提交或推送代码。
+
+
 ## 2026-10-28：VXLAN 外层 VRF 创建与修改
 
 已实现配置字段 encapVrfId / protobuf encap_vrf_id，默认 0，与 BD/BVI 的内层租户 VRF 独立。

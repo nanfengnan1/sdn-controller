@@ -174,3 +174,9 @@ Agent / Controller / Gateway 全部 Go 测试、45 项 Python 适配器测试、
 汇总报告：配套 Agent 仓库
 artifacts/vpp/encap-vrf-20261028-143107/verification.json。
 未替换运行环境或覆盖 v1.0；此次为软件路径验收，不代表物理网卡或性能验收。
+
+
+IPS 资源
+----------------------------
+
+规则、接口绑定、基础文件与恢复说明见 :doc:`ips`。

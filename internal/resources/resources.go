@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 )
 
 var payloads = map[a.OpCode]string{
+	a.OpCode_IPS_RULE: "ips_rule", a.OpCode_IPS_INTERFACE: "ips_interface",
 	a.OpCode_NEIGHBOR_KEEPALIVE: "neighbor_keepalive",
 	a.OpCode_NODE_NETWORK:       "network", a.OpCode_INTERFACE: "interface", a.OpCode_ADDRESS: "address",
 	a.OpCode_TENANT: "tenant", a.OpCode_BD: "bridge", a.OpCode_BD_PORT: "bridge_port", a.OpCode_BD_TENANT: "binding",
@@ -73,6 +75,10 @@ func Key(o *a.Operation) (string, error) {
 	case a.OpCode_NODE_NETWORK, a.OpCode_NEIGHBOR_KEEPALIVE:
 		fields = nil
 	case a.OpCode_TENANT, a.OpCode_BD, a.OpCode_INTERFACE, a.OpCode_VXLAN:
+		fields = []string{"name"}
+	case a.OpCode_IPS_RULE:
+		fields = []string{"sid"}
+	case a.OpCode_IPS_INTERFACE:
 		fields = []string{"name"}
 	case a.OpCode_ADDRESS:
 		fields = []string{"interface", "prefix"}
@@ -258,7 +264,7 @@ func Apply(base []*a.Operation, edits []*a.Operation) ([]*a.Operation, error) {
 			delete(objects, x.Id)
 			continue
 		}
-		if edit.Action == a.Action_SET && old == nil && (edit.Code == a.OpCode_BD || edit.Code == a.OpCode_VXLAN) {
+		if edit.Action == a.Action_SET && old == nil && (edit.Code == a.OpCode_BD || edit.Code == a.OpCode_VXLAN || edit.Code == a.OpCode_IPS_RULE || edit.Code == a.OpCode_IPS_INTERFACE) {
 			return nil, fmt.Errorf("%s does not exist; create it first", edit.Code)
 		}
 		if edit.Action == a.Action_SET && old != nil {
@@ -363,6 +369,10 @@ func Replay(journal []*a.Operation) ([]*a.Operation, error) {
 }
 func rank(c a.OpCode) int {
 	switch c {
+	case a.OpCode_IPS_RULE:
+		return 120
+	case a.OpCode_IPS_INTERFACE:
+		return 130
 	case a.OpCode_NODE_NETWORK, a.OpCode_NEIGHBOR_KEEPALIVE:
 		return 0
 	case a.OpCode_TENANT:
@@ -452,6 +462,17 @@ func Validate(ops []*a.Operation) error {
 		}
 		var name, kind string
 		switch o.Code {
+		case a.OpCode_IPS_RULE:
+			x := o.GetIpsRule()
+			if x.Sid == 0 || len(x.Rule) == 0 || len(x.Rule) > 16384 || strings.ContainsAny(x.Rule, "\x00\r\n") {
+				return fmt.Errorf("IPS rule requires nonzero SID and a single rule line")
+			}
+		case a.OpCode_IPS_INTERFACE:
+			x := o.GetIpsInterface()
+			if !regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$").MatchString(x.Name) ||
+				(x.Direction != "input" && x.Direction != "output" && x.Direction != "inout") {
+				return fmt.Errorf("invalid IPS native interface or direction")
+			}
 		case a.OpCode_TENANT:
 			x := o.GetTenant()
 			name, kind = x.Name, "VRF"

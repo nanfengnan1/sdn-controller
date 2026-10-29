@@ -8,6 +8,7 @@
    :maxdepth: 1
 
    architecture
+   ips
    protocol
    planner
    resources
